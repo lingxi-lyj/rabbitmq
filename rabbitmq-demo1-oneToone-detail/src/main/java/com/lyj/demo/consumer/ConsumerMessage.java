@@ -1,5 +1,6 @@
 package com.lyj.demo.consumer;
 
+import com.lyj.demo.utils.RabbitMqUtil;
 import com.rabbitmq.client.*;
 
 import java.io.IOException;
@@ -12,10 +13,32 @@ import java.util.concurrent.TimeoutException;
  * @Description: 消费者消费消息
  */
 public class ConsumerMessage {
-    public static void main(String[] args) {
-       new ConsumerMessage().consumerMessage();
+    public static void main(String[] args) throws IOException {
+//       new ConsumerMessage().consumerMessage();
+        new ConsumerMessage().consumerMessage1();
     }
 
+    //点对点方式-优化
+    public void consumerMessage1() throws IOException {
+        Connection connection = RabbitMqUtil.getConnection("192.168.37.128", 5672, "ems", "ems", "ems");
+        Channel channel = RabbitMqUtil.getChannel(connection);
+        channel.queueDeclare("hello",false,false,false,null);
+        channel.basicConsume("hello",true,new DefaultConsumer(channel){
+            /**
+             *
+             * @param consumerTag 类似于标签
+             * @param envelope  类似于消息传递过程中的信封
+             * @param properties 类似于消息传递时的属性
+             * @param body 消息队列中取出的消息
+             * @throws IOException
+             */
+            @Override
+            public void handleDelivery(String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body) throws IOException {
+                System.out.println("消费的消息是："+new String(body));
+                super.handleDelivery(consumerTag, envelope, properties, body);
+            }
+        });
+    }
     //消费者消费消息
     public void consumerMessage(){
         //1.创建连接工厂和生产者保持一致
@@ -30,7 +53,7 @@ public class ConsumerMessage {
             //2.创建通道
             Channel channel = connection.createChannel();
              //3.通道绑定队列,这里的参数和生产者的参数含义是一样的
-            channel.queueDeclare("hello",false,false,false,null);
+            channel.queueDeclare("hello",true,false,false,null);
             //4.消费消息
             /**
              * 参数1：消费消息的队列名称
